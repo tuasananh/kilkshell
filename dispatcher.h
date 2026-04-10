@@ -15,4 +15,4 @@ typedef struct ExecutionResult {
 ExecutionResult keep_running_with_error(LPWSTR command, DWORD error_code,
                                         LPWSTR message);
 
-ExecutionResult dispatch_command(int argc, LPWSTR* argv);
+ExecutionResult dispatch_command(LPWSTR input_buffer, DWORD input_len);

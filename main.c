@@ -45,11 +45,7 @@ int main() {
 
     // If user did not just press Enter
     if (input_len != 0) {
-      int argc;
-      LPWSTR* argv = CommandLineToArgvW(input_buffer, &argc);
-
-      ExecutionResult result = dispatch_command(argc, argv);
-      LocalFree(argv);
+      ExecutionResult result = dispatch_command(input_buffer, input_len);
 
       if (!result.keep_running) {
         exit_code = result.exit_code;
