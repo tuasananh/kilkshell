@@ -9,7 +9,7 @@ static ExecutionResult handler(int argc, LPWSTR* argv) {
   for (size_t i = 0; i < n_commands; i++) {
     wprintf(L"  %ls - %ls\n", commands[i]->name, commands[i]->description);
   }
-  return (ExecutionResult){.keep_running = true, .exit_code = 0};
+  return KEEP_RUNNING(0);
 }
 
 Command help_command = {

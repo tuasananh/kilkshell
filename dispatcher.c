@@ -15,6 +15,5 @@ ExecutionResult dispatch_command(int argc, LPWSTR* argv) {
   }
 
   wprintf(L"Command not recognized: %ls\n", argv[0]);
-
-  return (ExecutionResult){.keep_running = true, .exit_status = 1};
+  return KEEP_RUNNING(EXIT_FAILURE);
 }
