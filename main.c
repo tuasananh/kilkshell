@@ -26,12 +26,12 @@ LPWSTR get_prompt() {
 int main() {
   _setmode(_fileno(stdout), _O_U16TEXT);  // Set stdout to Unicode mode
 
-  LPWSTR prompt = get_prompt();
-
   int exit_code = 0;
 
   while (true) {
+    LPWSTR prompt = get_prompt();
     wprintf(L"%ls", prompt);
+    free(prompt);  // we are done
 
     HRESULT result = StringCchGetsW(input_buffer, MAX_INPUT_SIZE);
 
@@ -55,8 +55,6 @@ int main() {
 
     wprintf(L"\n");
   }
-
-  free(prompt);
 
   return exit_code;
 }
