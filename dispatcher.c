@@ -2,9 +2,12 @@
 
 #include <assert.h>
 #include <processthreadsapi.h>
+#include <stdint.h>
 #include <wchar.h>
+#include <winuser.h>
 
 #include "command.h"
+#include "process.h"
 
 ExecutionResult dispatch_command(LPWSTR input_buffer, DWORD input_len) {
   int argc;
@@ -19,33 +22,20 @@ ExecutionResult dispatch_command(LPWSTR input_buffer, DWORD input_len) {
     }
   }
 
+  bool run_in_background = false;
+  if (wcscmp(argv[argc - 1], L"&") == 0) {
+    run_in_background = true;
+  }
   LocalFree(argv);
 
-  STARTUPINFOW si;
-  PROCESS_INFORMATION pi;
-
-  ZeroMemory(&si, sizeof(si));
-  si.cb = sizeof(si);
-  ZeroMemory(&pi, sizeof(pi));
-
-  BOOL success = CreateProcessW(NULL, input_buffer, NULL, NULL, FALSE, 0, NULL,
-                                NULL, &si, &pi);
-
-  if (!success) {
-    DWORD error_code = GetLastError();
-    return keep_running_with_error(L"kilkshell", error_code,
-                                   L"Command not found");
+  if (run_in_background) {
+    while (input_len > 0 && input_buffer[input_len - 1] != L'&') {
+      input_buffer[--input_len] = L'\0';
+    }
+    input_buffer[--input_len] = L'\0';  // removed the '&'
   }
 
-  WaitForSingleObject(pi.hProcess, INFINITE);
-
-  DWORD exit_code;
-  GetExitCodeProcess(pi.hProcess, &exit_code);
-
-  CloseHandle(pi.hProcess);
-  CloseHandle(pi.hThread);
-
-  return KEEP_RUNNING(exit_code);
+  return run_process(input_buffer, run_in_background);
 }
 
 ExecutionResult keep_running_with_error(LPWSTR command, DWORD error_code,
