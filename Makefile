@@ -3,7 +3,7 @@ FLAGS = -Wall -Wextra -O2
 COMMAND = ${CPP} ${FLAGS}
 # SRCPP = $(wildcard *.c)
 
-main: main.c dispatcher.o command.o help.o exit.o ls.o process.o
+main: main.c dispatcher.o command.o help.o exit.o ls.o cd.o process.o
 	${COMMAND} -o main $^
 
 clean:
@@ -25,6 +25,10 @@ exit.o: exit.c
 ls.o: ls.c
 	${COMMAND} -c $^
 
+cd.o: cd.c
+	${COMMAND} -c $^
+
 process.o: process.c
 	${COMMAND} -c $^
+
 
