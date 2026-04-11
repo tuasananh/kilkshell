@@ -5,9 +5,11 @@
 #include "exit.h"
 #include "help.h"
 #include "ls.h"
+#include "mkdir.h"
 
 Command* commands[] = {
-    &help_command, &exit_command, &ls_command, &cd_command, &clear_command
+    &help_command,  &exit_command, &ls_command, &cd_command,
+    &clear_command, &mkdir_command
     // Add more commands here
 };
 
