@@ -16,7 +16,7 @@ WCHAR input_buffer[MAX_INPUT_SIZE];
 LPWSTR get_prompt() {
   DWORD length = GetCurrentDirectoryW(0, NULL);
   LPWSTR prompt = (LPWSTR)malloc((length + 3) * sizeof(WCHAR));
-  GetCurrentDirectoryW(length, prompt);
+  GetCurrentDirectoryW(length + 3, prompt);
   prompt[length - 1] = L'\n';
   prompt[length] = L'>';
   prompt[length + 1] = L' ';

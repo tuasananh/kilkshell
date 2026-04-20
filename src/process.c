@@ -154,7 +154,6 @@ ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
             pi.dwProcessId);
   }
 
-  if (pi.hProcess != NULL) CloseHandle(pi.hProcess);
   if (pi.hThread != NULL) CloseHandle(pi.hThread);
 
   if (hNullIn != INVALID_HANDLE_VALUE) {
