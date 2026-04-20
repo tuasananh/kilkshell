@@ -1,6 +1,6 @@
 #include <wchar.h>
 
-#include "command.h"
+#include "../command.h"
 
 static ExecutionResult handler(int argc, LPWSTR* argv) {
   wprintf(L"Available commands: \n");

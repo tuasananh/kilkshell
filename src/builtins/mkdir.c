@@ -3,7 +3,7 @@
 #include <wchar.h>
 #include <winnt.h>
 
-#include "dispatcher.h"
+#include "../dispatcher.h"
 
 static ExecutionResult wrong_usage(LPWSTR command) {
   wprintf(L"Usage: %ls <directory>\n", command);

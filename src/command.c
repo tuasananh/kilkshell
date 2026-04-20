@@ -1,11 +1,11 @@
 #include "command.h"
 
-#include "cd.h"
-#include "clear.h"
-#include "exit.h"
-#include "help.h"
-#include "ls.h"
-#include "mkdir.h"
+#include "builtins/cd.h"
+#include "builtins/clear.h"
+#include "builtins/exit.h"
+#include "builtins/help.h"
+#include "builtins/ls.h"
+#include "builtins/mkdir.h"
 
 Command* commands[] = {
     &help_command,  &exit_command, &ls_command, &cd_command,

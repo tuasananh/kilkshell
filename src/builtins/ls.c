@@ -9,7 +9,7 @@
 #include <winerror.h>
 #include <winnt.h>
 
-#include "dispatcher.h"
+#include "../dispatcher.h"
 
 static ExecutionResult handler(int argc, LPWSTR* argv) {
   WCHAR directory[MAX_PATH];
