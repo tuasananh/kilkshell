@@ -7,6 +7,7 @@
 #include <windows.h>
 
 #include "dispatcher.h"
+#include "process_manager.h"
 
 #define MAX_INPUT_SIZE 1024
 
@@ -29,6 +30,7 @@ int main() {
   int exit_code = 0;
 
   while (true) {
+    clean_dead_processes();
     LPWSTR prompt = get_prompt();
     wprintf(L"%ls", prompt);
     free(prompt);  // we are done

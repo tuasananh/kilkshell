@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <wchar.h>
 
+#include "process_manager.h"
+
 // Encodes the input string and wraps it in the PowerShell command directly.
 // Returns a single allocated string. Caller must call free() on it.
 static LPWSTR wrap_in_powershell_encoded_command(LPCWSTR input_buffer) {
@@ -63,6 +65,15 @@ static LPWSTR wrap_in_powershell_encoded_command(LPCWSTR input_buffer) {
 }
 
 ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
+  size_t len = wcslen(input_buffer);
+  while (len > 0 &&
+         (input_buffer[len - 1] == L'\n' || input_buffer[len - 1] == L'\r' ||
+          input_buffer[len - 1] == L' ')) {
+    input_buffer[--len] = L'\0';
+  }
+
+  if (len == 0) return KEEP_RUNNING(0);
+
   STARTUPINFOW si;
   PROCESS_INFORMATION pi;
 
@@ -70,44 +81,39 @@ ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
   si.cb = sizeof(si);
   ZeroMemory(&pi, sizeof(pi));
 
+  // Thử chạy trực tiếp
   BOOL success = CreateProcessW(NULL, input_buffer, NULL, NULL, FALSE, 0, NULL,
                                 NULL, &si, &pi);
 
   if (!success) {
     DWORD error_code = GetLastError();
-
     if (error_code == ERROR_FILE_NOT_FOUND) {
       LPWSTR ps_cmd = wrap_in_powershell_encoded_command(input_buffer);
-
       if (ps_cmd != NULL) {
         success = CreateProcessW(NULL, ps_cmd, NULL, NULL, FALSE, 0, NULL, NULL,
                                  &si, &pi);
         free(ps_cmd);
-      } else {
-        return keep_running_with_error(
-            L"kilkshell", error_code,
-            L"Failed to allocate memory for PowerShell command");
-      }
-
-      if (!success) {
-        error_code = GetLastError();
       }
     }
 
     if (!success) {
-      return keep_running_with_error(L"kilkshell", error_code,
+      return keep_running_with_error(L"avshell", GetLastError(),
                                      L"Command not found");
     }
   }
 
   DWORD exit_code = EXIT_SUCCESS;
+
   if (!run_in_background) {
     WaitForSingleObject(pi.hProcess, INFINITE);
     GetExitCodeProcess(pi.hProcess, &exit_code);
+    CloseHandle(pi.hProcess);
+  } else {
+    add_background_process(pi.dwProcessId, pi.hProcess, input_buffer);
+    wprintf(L"[%d] Process started with PID: %d\n", bg_process_count,
+            pi.dwProcessId);
   }
 
-  CloseHandle(pi.hProcess);
   CloseHandle(pi.hThread);
-
   return KEEP_RUNNING(exit_code);
 }
