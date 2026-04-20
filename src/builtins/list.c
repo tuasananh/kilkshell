@@ -8,8 +8,10 @@
 #include "../process_manager.h"
 
 ExecutionResult list_handler(int argc, LPWSTR* argv) {
-  (void)argc;
-  (void)argv;
+  if (argc != 1) {
+    wprintf(L"Usage: %ls\n", argv[0]);
+    return KEEP_RUNNING(EXIT_FAILURE);
+  }
 
   clean_dead_processes();
 
