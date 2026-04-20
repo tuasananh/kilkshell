@@ -1,4 +1,4 @@
 #pragma once
-#include "command.h"
+#include "../command.h"
 
 extern Command ls_command;

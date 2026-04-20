@@ -1,5 +1,6 @@
 #include "process.h"
 
+#include <handleapi.h>
 #include <stdint.h>
 #include <wchar.h>
 
@@ -81,23 +82,62 @@ ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
   si.cb = sizeof(si);
   ZeroMemory(&pi, sizeof(pi));
 
-  // Thử chạy trực tiếp
-  BOOL success = CreateProcessW(NULL, input_buffer, NULL, NULL, FALSE, 0, NULL,
-                                NULL, &si, &pi);
+  DWORD creation_flags = 0;
+  BOOL inherit_handles = FALSE;
+  HANDLE hNullIn = INVALID_HANDLE_VALUE;
+
+  if (run_in_background) {
+    inherit_handles = TRUE;
+
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = TRUE;
+
+    hNullIn = CreateFileW(L"NUL", GENERIC_READ, 0, &sa, OPEN_EXISTING,
+                          FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hNullIn == INVALID_HANDLE_VALUE) {
+      DWORD error_code = GetLastError();
+      return keep_running_with_error(L"kilkshell", error_code,
+                                     L"Failed to open NUL device");
+    }
+
+    si.hStdInput = hNullIn;
+    si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+    si.dwFlags |= STARTF_USESTDHANDLES;
+  }
+
+  BOOL success = CreateProcessW(NULL, input_buffer, NULL, NULL, inherit_handles,
+                                creation_flags, NULL, NULL, &si, &pi);
 
   if (!success) {
     DWORD error_code = GetLastError();
     if (error_code == ERROR_FILE_NOT_FOUND) {
       LPWSTR ps_cmd = wrap_in_powershell_encoded_command(input_buffer);
       if (ps_cmd != NULL) {
-        success = CreateProcessW(NULL, ps_cmd, NULL, NULL, FALSE, 0, NULL, NULL,
-                                 &si, &pi);
+        success = CreateProcessW(NULL, ps_cmd, NULL, NULL, inherit_handles,
+                                 creation_flags, NULL, NULL, &si, &pi);
         free(ps_cmd);
+      } else {
+        if (hNullIn != INVALID_HANDLE_VALUE) {
+          CloseHandle(hNullIn);
+        }
+        return keep_running_with_error(
+            L"kilkshell", error_code,
+            L"Failed to allocate memory for PowerShell command");
+      }
+
+      if (!success) {
+        error_code = GetLastError();
       }
     }
 
     if (!success) {
-      return keep_running_with_error(L"avshell", GetLastError(),
+      if (hNullIn != INVALID_HANDLE_VALUE) {
+        CloseHandle(hNullIn);
+      }
+      return keep_running_with_error(L"kilkshell", error_code,
                                      L"Command not found");
     }
   }
@@ -114,6 +154,12 @@ ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
             pi.dwProcessId);
   }
 
-  CloseHandle(pi.hThread);
+  if (pi.hProcess != NULL) CloseHandle(pi.hProcess);
+  if (pi.hThread != NULL) CloseHandle(pi.hThread);
+
+  if (hNullIn != INVALID_HANDLE_VALUE) {
+    CloseHandle(hNullIn);
+  }
+
   return KEEP_RUNNING(exit_code);
 }

@@ -4,8 +4,8 @@
 #include <wchar.h>
 #include <windows.h>
 
-#include "dispatcher.h"
-#include "process_manager.h"
+#include "../dispatcher.h"
+#include "../process_manager.h"
 
 ExecutionResult list_handler(int argc, LPWSTR* argv) {
   (void)argc;
