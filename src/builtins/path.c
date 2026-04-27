@@ -6,6 +6,56 @@
 
 #include "../dispatcher.h"
 
+// Helper function to resolve relative paths to absolute paths
+static LPWSTR resolve_to_absolute_path(LPCWSTR path) {
+  if (path == NULL) {
+    return NULL;
+  }
+
+  // Check if path is already absolute (starts with drive letter or backslash)
+  if ((wcslen(path) >= 2 && path[1] == L':') || path[0] == L'\\' ||
+      path[0] == L'/') {
+    // Already absolute, duplicate and return
+    LPWSTR absolute = (LPWSTR)malloc((wcslen(path) + 1) * sizeof(WCHAR));
+    if (absolute != NULL) {
+      wcscpy(absolute, path);
+    }
+    return absolute;
+  }
+
+  // Get current working directory
+  DWORD cwd_size = GetCurrentDirectoryW(0, NULL);
+  if (cwd_size == 0) {
+    return NULL;
+  }
+
+  LPWSTR cwd = (LPWSTR)malloc(cwd_size * sizeof(WCHAR));
+  if (cwd == NULL) {
+    return NULL;
+  }
+
+  if (GetCurrentDirectoryW(cwd_size, cwd) == 0) {
+    free(cwd);
+    return NULL;
+  }
+
+  // Combine current directory with relative path
+  size_t absolute_size =
+      wcslen(cwd) + 1 + wcslen(path) + 1; // cwd + \\ + path + null terminator
+  LPWSTR absolute = (LPWSTR)malloc(absolute_size * sizeof(WCHAR));
+  if (absolute == NULL) {
+    free(cwd);
+    return NULL;
+  }
+
+  wcscpy(absolute, cwd);
+  wcscat(absolute, L"\\");
+  wcscat(absolute, path);
+
+  free(cwd);
+  return absolute;
+}
+
 static ExecutionResult path_handler(int argc, LPWSTR* argv) {
   if (argc != 1) {
     wprintf(L"Usage: %ls\n", argv[0]);
@@ -42,51 +92,63 @@ static ExecutionResult addpath_handler(int argc, LPWSTR* argv) {
     return KEEP_RUNNING(EXIT_FAILURE);
   }
 
-  DWORD attribs = GetFileAttributesW(argv[1]);
+  // Resolve relative paths to absolute paths
+  LPWSTR absolute_path = resolve_to_absolute_path(argv[1]);
+  if (absolute_path == NULL) {
+    wprintf(L"Error: Failed to resolve path '%ls'.\n", argv[1]);
+    return KEEP_RUNNING(EXIT_FAILURE);
+  }
+
+  DWORD attribs = GetFileAttributesW(absolute_path);
   if (attribs == INVALID_FILE_ATTRIBUTES ||
       !(attribs & FILE_ATTRIBUTE_DIRECTORY)) {
-    wprintf(L"Error: The directory '%ls' does not exist.\n", argv[1]);
+    wprintf(L"Error: The directory '%ls' does not exist.\n", absolute_path);
+    free(absolute_path);
     return KEEP_RUNNING(EXIT_FAILURE);
   }
 
   DWORD old_size = GetEnvironmentVariableW(L"PATH", NULL, 0);
-  DWORD new_dir_len = wcslen(argv[1]);
+  DWORD new_dir_len = wcslen(absolute_path);
   DWORD new_size = (old_size > 0 ? old_size : 1) + new_dir_len + 1;
 
   LPWSTR new_path = (LPWSTR)malloc(new_size * sizeof(WCHAR));
   if (new_path == NULL) {
     wprintf(L"Error: Not enough memory!\n");
+    free(absolute_path);
     return KEEP_RUNNING(EXIT_FAILURE);
   }
 
   if (old_size > 0) {
     GetEnvironmentVariableW(L"PATH", new_path, old_size);
 
-    LPWSTR found = wcsstr(new_path, argv[1]);
+    LPWSTR found = wcsstr(new_path, absolute_path);
     if (found != NULL) {
-      size_t len = wcslen(argv[1]);
+      size_t len = wcslen(absolute_path);
       if ((found == new_path || found[-1] == L';') &&
           (found[len] == L';' || found[len] == L'\0')) {
         wprintf(L"Notice: The directory is already in PATH.\n");
         free(new_path);
+        free(absolute_path);
         return KEEP_RUNNING(0);
       }
     }
 
     wcscat(new_path, L";");
-    wcscat(new_path, argv[1]);
+    wcscat(new_path, absolute_path);
   } else {
-    wcscpy(new_path, argv[1]);
+    wcscpy(new_path, absolute_path);
   }
 
   if (!SetEnvironmentVariableW(L"PATH", new_path)) {
     ExecutionResult res = keep_running_with_error(argv[0], GetLastError(),
                                                   L"Failed to update PATH");
     free(new_path);
+    free(absolute_path);
     return res;
   }
 
   free(new_path);
+  free(absolute_path);
   wprintf(L"Success: Directory added to PATH.\n");
   return KEEP_RUNNING(0);
 }
