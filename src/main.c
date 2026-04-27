@@ -3,7 +3,7 @@
 #include <io.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <strsafe.h>
+#include <wchar.h>
 #include <windows.h>
 
 #include "dispatcher.h"
@@ -46,30 +46,34 @@ int main() {
     wprintf(L"%ls", prompt);
     free(prompt);  // we are done
 
-    HRESULT result = StringCchGetsW(input_buffer, MAX_INPUT_SIZE);
-
-    if (FAILED(result)) {
-      if (result == STRSAFE_E_INVALID_PARAMETER) {
-        wprintf(L"Invalid parameter. Please try again.\n");
-      } else if (result == STRSAFE_E_INSUFFICIENT_BUFFER) {
-        wprintf(L"Input too long. Please limit to %d characters.\n",
-                MAX_INPUT_SIZE - 1);
-      } else if (result != STRSAFE_E_END_OF_FILE || !feof(stdin)) {
-        wprintf(L"An unexpected error occurred.\n");
+    if (fgetws(input_buffer, MAX_INPUT_SIZE, stdin) == NULL) {
+      if (feof(stdin)) {
+        break;
       }
-    } else {
-      size_t input_len;
-      result = StringCchLengthW(input_buffer, MAX_INPUT_SIZE, &input_len);
-      assert(SUCCEEDED(result));
+      wprintf(L"An unexpected error occurred.\n");
+      continue;
+    }
 
-      // If user did not just press Enter
-      if (input_len != 0) {
-        ExecutionResult result = dispatch_command(input_buffer, input_len);
+    size_t input_len = wcslen(input_buffer);
+    if (input_len > 0 && input_buffer[input_len - 1] == L'\n') {
+      input_buffer[input_len - 1] = L'\0';
+      input_len--;
+    } else if (input_len == MAX_INPUT_SIZE - 1) {
+      wprintf(L"Input too long. Please limit to %d characters.\n",
+              MAX_INPUT_SIZE - 2);
+      // Flush stdin
+      int c;
+      while ((c = fgetwc(stdin)) != L'\n' && c != WEOF);
+      continue;
+    }
 
-        if (!result.keep_running) {
-          exit_code = result.exit_code;
-          break;
-        }
+    // If user did not just press Enter
+    if (input_len != 0) {
+      ExecutionResult result = dispatch_command(input_buffer, input_len);
+
+      if (!result.keep_running) {
+        exit_code = result.exit_code;
+        break;
       }
     }
 
