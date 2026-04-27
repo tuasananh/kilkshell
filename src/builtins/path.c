@@ -12,47 +12,23 @@ static LPWSTR resolve_to_absolute_path(LPCWSTR path) {
     return NULL;
   }
 
-  // Check if path is already absolute (starts with drive letter or backslash)
-  if ((wcslen(path) >= 2 && path[1] == L':') || path[0] == L'\\' ||
-      path[0] == L'/') {
-    // Already absolute, duplicate and return
-    LPWSTR absolute = (LPWSTR)malloc((wcslen(path) + 1) * sizeof(WCHAR));
-    if (absolute != NULL) {
-      wcscpy(absolute, path);
-    }
-    return absolute;
-  }
-
-  // Get current working directory
-  DWORD cwd_size = GetCurrentDirectoryW(0, NULL);
-  if (cwd_size == 0) {
+  // GetFullPathNameW resolves relative and drive-relative paths (e.g., C:foo)
+  // to a fully qualified absolute path.
+  DWORD absolute_size = GetFullPathNameW(path, 0, NULL, NULL);
+  if (absolute_size == 0) {
     return NULL;
   }
 
-  LPWSTR cwd = (LPWSTR)malloc(cwd_size * sizeof(WCHAR));
-  if (cwd == NULL) {
-    return NULL;
-  }
-
-  if (GetCurrentDirectoryW(cwd_size, cwd) == 0) {
-    free(cwd);
-    return NULL;
-  }
-
-  // Combine current directory with relative path
-  size_t absolute_size =
-      wcslen(cwd) + 1 + wcslen(path) + 1; // cwd + \\ + path + null terminator
   LPWSTR absolute = (LPWSTR)malloc(absolute_size * sizeof(WCHAR));
   if (absolute == NULL) {
-    free(cwd);
     return NULL;
   }
 
-  wcscpy(absolute, cwd);
-  wcscat(absolute, L"\\");
-  wcscat(absolute, path);
+  if (GetFullPathNameW(path, absolute_size, absolute, NULL) == 0) {
+    free(absolute);
+    return NULL;
+  }
 
-  free(cwd);
   return absolute;
 }
 
