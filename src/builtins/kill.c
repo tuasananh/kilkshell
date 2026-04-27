@@ -7,7 +7,6 @@
 #include "../dispatcher.h"
 #include "../process_manager.h"
 
-
 static ExecutionResult handler(int argc, LPWSTR* argv) {
   if (argc != 2) {
     wprintf(L"Usage: kill <PID>\n");
