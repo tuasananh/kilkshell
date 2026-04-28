@@ -13,8 +13,8 @@ static LPWSTR wrap_in_cmd(LPCWSTR input_buffer) {
 
   static const wchar_t prefix[] = L"cmd.exe /c \"";
   static const wchar_t suffix[] = L"\"";
-  size_t prefix_len = wcslen(prefix); // Length is 12
-  size_t suffix_len = wcslen(suffix); // Length is 1
+  size_t prefix_len = wcslen(prefix);  // Length is 12
+  size_t suffix_len = wcslen(suffix);  // Length is 1
 
   size_t in_len = wcslen(input_buffer);
   size_t total_chars = prefix_len + in_len + suffix_len + 1;
@@ -51,25 +51,7 @@ ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
   HANDLE hNullIn = INVALID_HANDLE_VALUE;
 
   if (run_in_background) {
-    inherit_handles = TRUE;
-
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = TRUE;
-
-    hNullIn = CreateFileW(L"NUL", GENERIC_READ, 0, &sa, OPEN_EXISTING,
-                          FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hNullIn == INVALID_HANDLE_VALUE) {
-      DWORD error_code = GetLastError();
-      return keep_running_with_error(L"kilkshell", error_code,
-                                     L"Failed to open NUL device");
-    }
-
-    si.hStdInput = hNullIn;
-    si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-    si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-    si.dwFlags |= STARTF_USESTDHANDLES;
+    creation_flags |= CREATE_NEW_PROCESS_GROUP;
   }
 
   BOOL success = CreateProcessW(NULL, input_buffer, NULL, NULL, inherit_handles,
@@ -77,7 +59,8 @@ ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
 
   if (!success) {
     DWORD error_code = GetLastError();
-    if (error_code == ERROR_FILE_NOT_FOUND || error_code == ERROR_BAD_EXE_FORMAT) {
+    if (error_code == ERROR_FILE_NOT_FOUND ||
+        error_code == ERROR_BAD_EXE_FORMAT) {
       LPWSTR cmd_cmd = wrap_in_cmd(input_buffer);
       if (cmd_cmd != NULL) {
         success = CreateProcessW(NULL, cmd_cmd, NULL, NULL, inherit_handles,
@@ -88,7 +71,7 @@ ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
           CloseHandle(hNullIn);
         }
         return keep_running_with_error(
-            L"kilkshell", error_code,
+            L"avshell", error_code,
             L"Failed to allocate memory for cmd command");
       }
 
@@ -101,7 +84,7 @@ ExecutionResult run_process(LPWSTR input_buffer, bool run_in_background) {
       if (hNullIn != INVALID_HANDLE_VALUE) {
         CloseHandle(hNullIn);
       }
-      return keep_running_with_error(L"kilkshell", error_code,
+      return keep_running_with_error(L"avshell", error_code,
                                      L"Command not found");
     }
   }

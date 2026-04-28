@@ -1,5 +1,6 @@
 #include "process_manager.h"
 
+#include <processthreadsapi.h>
 #include <stdio.h>
 
 #include "data_structures/vector.h"
@@ -13,6 +14,8 @@ void process_manager_init(void) {
 void process_manager_cleanup(void) {
   for (size_t i = 0; i < vector_size(&bg_processes); i++) {
     ProcessInfo* p = (ProcessInfo*)vector_get(&bg_processes, i);
+    TerminateProcess(p->handle, 1);
+    wprintf(L"Terminated background process with PID %lu\n", p->pid);
     CloseHandle(p->handle);
   }
   vector_free(&bg_processes);
