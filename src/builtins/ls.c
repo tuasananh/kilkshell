@@ -3,6 +3,7 @@
 #include <errhandlingapi.h>
 #include <fileapi.h>
 #include <handleapi.h>
+#include <strsafe.h>
 #include <wchar.h>
 #include <windows.h>
 #include <winerror.h>
@@ -17,18 +18,18 @@ static ExecutionResult handler(int argc, LPWSTR* argv) {
     directory[0] = L'.';
     directory[1] = L'\0';
   } else {
-    if (wcslen(argv[1]) >= MAX_PATH) {
-      return keep_running_with_error(argv[0], ERROR_BUFFER_OVERFLOW,
+    LPWSTR end_ptr;
+    if (FAILED(StringCchCopyExW(directory, MAX_PATH, argv[1], &end_ptr, NULL,
+                                0))) {
+      return keep_running_with_error(argv[0], GetLastError(),
                                      L"Directory path is too long");
     }
-    wcscpy(directory, argv[1]);
   }
 
-  if (wcslen(directory) + 2 >= MAX_PATH) { // +2 for L"\\*"
-    return keep_running_with_error(argv[0], ERROR_BUFFER_OVERFLOW,
+  if (FAILED(StringCchCatW(directory, MAX_PATH, L"\\*"))) {
+    return keep_running_with_error(argv[0], GetLastError(),
                                    L"Directory path is too long");
   }
-  wcscat(directory, L"\\*");
 
   WIN32_FIND_DATAW ffd;
   HANDLE result = FindFirstFileW(directory, &ffd);
